@@ -8,7 +8,6 @@ set -o pipefail
 
 # --- Domyślne ustawienia ---
 REPO_NAME=""
-BITBUCKET_USER=""
 DAYS_OLD=90
 DRY_RUN=false
 INTERACTIVE=false
