@@ -56,7 +56,7 @@ TEMP_DIR=$(mktemp -d)
 # Ustawienie pułapki, aby posprzątać katalog tymczasowy po zakończeniu skryptu
 trap 'cd / && echo "Sprzątanie katalogu tymczasowego..." && rm -rf "$TEMP_DIR"' EXIT
 
-REPO_URL="ssh://git@bitbucket.org:7999/cri/${REPO_NAME}.git"
+REPO_URL="ssh://git@bitbucket:7999/cri/${REPO_NAME}.git"
 
 echo "Klonowanie repozytorium z $REPO_URL..."
 git clone --quiet "$REPO_URL" "$TEMP_DIR"
