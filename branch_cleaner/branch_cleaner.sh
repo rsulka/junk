@@ -19,7 +19,7 @@ PROTECTED_BRANCHES=("master" "main" "develop")
 
 # Funkcja wyświetlająca pomoc
 usage() {
-  echo "Użycie: $0 -u <użytkownik> -r <nazwa_repo> [opcje]"
+  echo "Użycie: $0 -r <nazwa_repo> [opcje]"
   echo ""
   echo "Opcje:"
   echo "  -r <nazwa_repo>     (Wymagane) Nazwa repozytorium na Bitbucket (np. 'my-awesome-project')."
