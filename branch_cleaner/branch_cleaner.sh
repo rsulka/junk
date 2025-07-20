@@ -22,7 +22,6 @@ usage() {
   echo "Użycie: $0 -u <użytkownik> -r <nazwa_repo> [opcje]"
   echo ""
   echo "Opcje:"
-  echo "  -u <użytkownik>     (Wymagane) Nazwa użytkownika lub obszaru roboczego na Bitbucket."
   echo "  -r <nazwa_repo>     (Wymagane) Nazwa repozytorium na Bitbucket (np. 'my-awesome-project')."
   echo "  --dry-run           Tryb symulacji. Wyświetla gałęzie do usunięcia, ale ich nie usuwa."
   echo "  -i                  Tryb interaktywny. Pyta o potwierdzenie przed usunięciem każdej gałęzi."
@@ -37,7 +36,6 @@ usage() {
 while [[ "$#" -gt 0 ]]; do
   case $1 in
     -r) REPO_NAME="$2"; shift ;;
-    -u) BITBUCKET_USER="$2"; shift ;;
     --dry-run) DRY_RUN=true ;;
     -i) INTERACTIVE=true ;;
     -h|--help) usage; exit 0 ;;
@@ -47,8 +45,8 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # --- Walidacja argumentów ---
-if [ -z "$REPO_NAME" ] || [ -z "$BITBUCKET_USER" ]; then
-  echo "Błąd: Opcje -u (użytkownik/obszar roboczy) i -r (nazwa repozytorium) są wymagane."
+if [ -z "$REPO_NAME" ]; then
+  echo "Błąd: Opcja -r (nazwa repozytorium) jest wymagana."
   usage
   exit 1
 fi
@@ -58,7 +56,7 @@ TEMP_DIR=$(mktemp -d)
 # Ustawienie pułapki, aby posprzątać katalog tymczasowy po zakończeniu skryptu
 trap 'cd / && echo "Sprzątanie katalogu tymczasowego..." && rm -rf "$TEMP_DIR"' EXIT
 
-REPO_URL="git@bitbucket.org:${BITBUCKET_USER}/${REPO_NAME}.git"
+REPO_URL="ssh://git@bitbucket.org:7999/cri/${REPO_NAME}.git"
 
 echo "Klonowanie repozytorium z $REPO_URL..."
 git clone --quiet "$REPO_URL" "$TEMP_DIR"
@@ -143,7 +141,7 @@ echo "$FINAL_BRANCHES_TO_DELETE" | while IFS= read -r branch; do
   if [ -z "$branch" ]; then continue; fi
 
   if [ "$INTERACTIVE" = true ]; then
-    read -p "Czy na pewno usunąć zdalną gałąź 'origin/$branch'? [y/N] " -n 1 -r
+    read -p "Czy na pewno usunąć zdalną gałąź 'origin/$branch'? [y/N] " -n 1 -r < /dev/tty
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
       echo "Usuwanie gałęzi: origin/$branch"
