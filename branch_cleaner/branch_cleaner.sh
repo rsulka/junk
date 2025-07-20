@@ -28,8 +28,8 @@ usage() {
   echo "  -h,--help          Wyświetla tę pomoc."
   echo ""
   echo "Przykład:"
-  echo "  $0 -u myuser -r my-repo --dry-run"
-  echo "  $0 -u myworkspace -r my-repo -i"
+  echo "  $0 -r my-repo --dry-run"
+  echo "  $0 -r my-repo -i"
 }
 
 # --- Parsowanie argumentów ---
