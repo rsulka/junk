@@ -123,8 +123,29 @@ fi
 echo ""
 echo "Znaleziono następujące gałęzie do usunięcia na zdalnym 'origin':"
 echo "---"
-echo "$FINAL_BRANCHES_TO_DELETE"
+# Generowanie listy do wyświetlenia z powodami
+while IFS= read -r branch; do
+    if [ -z "$branch" ]; then continue; fi
+    reasons=""
+    # Sprawdzanie, czy gałąź została zmergowana
+    if echo -e "$MERGED_BRANCHES" | grep -q -x "$branch"; then
+        reasons+="zmergowana do master"
+    fi
+    # Sprawdzanie, czy gałąź jest stara
+    if echo -e "$OLD_BRANCHES" | grep -q -x "$branch"; then
+        if [ -n "$reasons" ]; then
+            reasons+="; "
+        fi
+        reasons+="starsza niż $DAYS_OLD dni"
+    fi
+    # Domyślny powód, jeśli żaden nie pasuje (na wszelki wypadek)
+    if [ -z "$reasons" ]; then
+        reasons="nieznany powód"
+    fi
+    echo -e "$branch\t($reasons)"
+done <<< "$FINAL_BRANCHES_TO_DELETE"
 echo "---"
+
 
 # --- Wykonanie akcji ---
 
