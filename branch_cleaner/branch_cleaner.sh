@@ -69,7 +69,7 @@ git fetch "origin" --prune
 echo "Wyszukiwanie gałęzi do usunięcia..."
 
 # 1. Gałęzie zmergowane do master
-MERGED_BRANCHES=$(git branch -r --merged origin/master | sed 's/ *origin\///' | tr -d ' *')
+MERGED_BRANCHES=$(git branch -r --merged origin/master | grep -v 'HEAD' | sed 's/ *origin\///' | tr -d ' *')
 
 # 2. Gałęzie starsze niż 90 dni
 CUTOFF_DATE=$(date -d "$DAYS_OLD days ago" +%s)
