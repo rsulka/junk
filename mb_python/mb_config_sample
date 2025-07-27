@@ -1,0 +1,14 @@
+# Uzupełnij poniższe zmienne danymi Twojego środowiska Bitbucket.
+
+# Adres serwera Bitbucket. 
+BITBUCKET_HOST="api.bitbucket.org"
+
+# Ustaw na 'true', jeśli używasz Bitbucket Server lub Data Center. W przeciwnym razie zostaw 'false'.
+IS_BITBUCKET_SERVER=false
+
+# Dla Cloud: nazwa Twojego workspace. Dla Server: klucz Twojego projektu.
+BITBUCKET_PROJECT_OR_WORKSPACE=""
+
+# Token dostępowy
+# Wymagane uprawnienia: odczyt repozytoriów i pull requestów.
+BITBUCKET_API_TOKEN=""
