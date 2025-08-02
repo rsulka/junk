@@ -31,7 +31,7 @@ config.default_domain = 'WSL:Ubuntu'
 config.launch_menu = {
   {
     label = 'PowerShell',
-    args = { 'powershell.exe', '-NoLogo' },
+    args = { 'pwsh.exe', '-NoLogo' },
     domain = { DomainName = 'local' },
   },
 }
