@@ -1,0 +1,17 @@
+# Skopiuj ten plik do '.mb_config' i uzupełnij poniższe zmienne.
+
+# Ustaw na 'true', jeśli używasz Bitbucket Server. W przeciwnym razie zostaw 'false'.
+IS_BITBUCKET_SERVER="false"
+
+# Dla Cloud: nazwa Twojego workspace.
+# Dla Server: klucz Twojego projektu (np. "PROJ").
+BITBUCKET_PROJECT_OR_WORKSPACE=""
+
+# Dla Cloud: nie jest używane, możesz zostawić puste.
+# Dla Server: pełny adres hosta (np. "bitbucket.twojafirma.com").
+BITBUCKET_HOST=""
+
+# Token dostępowy z uprawnieniami do odczytu repozytoriów i pull requestów.
+# Dla Cloud: użyj "App Password".
+# Dla Server: użyj "Personal Access Token".
+BITBUCKET_API_TOKEN=""

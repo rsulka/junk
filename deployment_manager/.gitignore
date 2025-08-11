@@ -1,0 +1,17 @@
+# Pliki konfiguracyjne z danymi wrażliwymi
+.mb_config
+
+# Katalog z lokalnym klonem repozytorium
+local_repo/
+
+# Pliki i katalogi generowane przez Pythona
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Katalogi środowiska wirtualnego
+venv/
+env/
+.venv/
+.env/
