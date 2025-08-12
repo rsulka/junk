@@ -8,10 +8,14 @@ from typing import Any, Optional, Dict, Set
 
 import requests
 import re
+import urllib3
 
 # --- Stałe ---
 LOCAL_REPO_DIR = Path("local_repo")
 CONFIG_FILE_NAME = ".dm_config"
+
+# Wyłącz ostrzeżenia o niezabezpieczonych żądaniach HTTPS
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- Konfiguracja ---
 
@@ -70,7 +74,7 @@ class BitbucketServerPlatform(BitbucketPlatform):
         return f"https://{self.host}/rest/api/1.0/projects/{self.project_or_workspace}/repos/{self.repo}/pull-requests?state=OPEN&at=refs/heads/master"
 
     def get_clone_url(self) -> str:
-        return f"https://x-token-auth:{self.token}@{self.host}/scm/{self.project_or_workspace.lower()}/{self.repo}.git"
+        return f"git@{self.host}:{self.project_or_workspace.lower()}/{self.repo}.git"
 
     def get_branch_from_pr(self, pr_data: dict[str, Any]) -> Optional[str]:
         return pr_data.get("fromRef", {}).get("displayId")
@@ -85,7 +89,7 @@ class BitbucketCloudPlatform(BitbucketPlatform):
         return f"https://api.bitbucket.org/2.0/repositories/{self.project_or_workspace}/{self.repo}/pullrequests?state=OPEN&fields=%2Bvalues.participants"
 
     def get_clone_url(self) -> str:
-        return f"https://x-token-auth:{self.token}@bitbucket.org/{self.project_or_workspace}/{self.repo}.git"
+        return f"git@bitbucket.org:{self.project_or_workspace}/{self.repo}.git"
 
     def get_branch_from_pr(self, pr_data: dict[str, Any]) -> Optional[str]:
         return pr_data.get("source", {}).get("branch", {}).get("name")
@@ -133,7 +137,7 @@ def get_pull_requests(platform: BitbucketPlatform) -> list:
     all_prs, url = [], platform.get_api_prs_url()
     while url:
         try:
-            response = requests.get(url, headers=platform.headers, timeout=30)
+            response = requests.get(url, headers=platform.headers, timeout=30, verify=False)
             response.raise_for_status()
             data = response.json()
             all_prs.extend(data.get("values", []))
@@ -222,49 +226,19 @@ def create_package(package_name: str, changed_files: Set[str]):
         print("Informacja: Katalog 'kody' nie istnieje w repozytorium. Tworzę pusty katalog.")
         package_code_dir.mkdir()
 
-    # Krok 2: Przetwarzanie 'dodatkowe_pliki' z logiką mergowania
+    # Krok 2: Przetwarzanie 'dodatkowe_pliki'
     source_extra_files_dir = LOCAL_REPO_DIR / 'dodatkowe_pliki'
     package_extra_files_dir.mkdir(exist_ok=True)
 
     if source_extra_files_dir.is_dir():
-        files_to_merge = {}
-        pattern = re.compile(r"^CRISPR-(\d+)_(.*)$")
-        
-        all_source_files = [p for p in source_extra_files_dir.rglob('*') if p.is_file()]
-        mergable_source_paths = set()
-
-        for f_path in all_source_files:
-            match = pattern.match(f_path.name)
-            if match:
-                number = int(match.group(1))
-                target_filename = match.group(2)
-                if target_filename not in files_to_merge:
-                    files_to_merge[target_filename] = []
-                files_to_merge[target_filename].append((number, f_path))
-                mergable_source_paths.add(str(f_path.relative_to(LOCAL_REPO_DIR)))
-
-        if files_to_merge:
-            print(f"\nMergowanie {len(files_to_merge)} grup plików z 'dodatkowe_pliki':")
-            for target_filename, file_list in files_to_merge.items():
-                file_list.sort() 
-                
-                target_path = package_dir / target_filename
-                print(f"  -> Tworzenie pliku: {target_path} z {len(file_list)} plików.")
-                
-                with open(target_path, "wb") as outfile:
-                    for _, f_path in file_list:
-                        with open(f_path, "rb") as infile:
-                            shutil.copyfileobj(infile, outfile)
-        
-        # Kopiowanie pozostałych zmienionych plików
+        # Najpierw kopiujemy wszystkie zmienione pliki z 'dodatkowe_pliki'
         extra_files_to_copy = {
             f for f in changed_files 
             if f.startswith('dodatkowe_pliki/')
-            and f not in mergable_source_paths
         }
         
         if extra_files_to_copy:
-            print(f"\nKopiuję {len(extra_files_to_copy)} pozostałych zmienionych plików z 'dodatkowe_pliki' do: {package_extra_files_dir}")
+            print(f"\nKopiuję {len(extra_files_to_copy)} zmienionych plików z 'dodatkowe_pliki' do: {package_extra_files_dir}")
             for file_path_str in extra_files_to_copy:
                 source_file = LOCAL_REPO_DIR / file_path_str
                 relative_path = Path(file_path_str).relative_to('dodatkowe_pliki')
@@ -277,8 +251,40 @@ def create_package(package_name: str, changed_files: Set[str]):
                 else:
                     print(f"  -> Pomijam (plik nie istnieje w scalonym kodzie): {file_path_str}")
         else:
-            print("\nInformacja: Brak dodatkowych (nie-mergowanych) zmienionych plików w 'dodatkowe_pliki' do skopiowania.")
+            print("\nInformacja: Brak zmienionych plików w 'dodatkowe_pliki' do skopiowania.")
 
+        # Teraz, po skopiowaniu, szukamy plików do mergowania w katalogu docelowym
+        files_to_merge = {}
+        pattern = re.compile(r"^CRISPR-(\d+)_(.*)$")
+        
+        all_package_files = [p for p in package_extra_files_dir.rglob('*') if p.is_file()]
+        
+        for f_path in all_package_files:
+            match = pattern.match(f_path.name)
+            if match:
+                number = int(match.group(1))
+                target_filename = match.group(2)
+                if target_filename not in files_to_merge:
+                    files_to_merge[target_filename] = []
+                files_to_merge[target_filename].append((number, f_path))
+
+        if files_to_merge:
+            print(f"\nMergowanie {len(files_to_merge)} grup plików z katalogu paczki:")
+            for target_filename, file_list in files_to_merge.items():
+                file_list.sort()
+                
+                target_path = package_dir / target_filename
+                print(f"  -> Tworzenie pliku: {target_path} z {len(file_list)} plików.")
+                
+                with open(target_path, "wb") as outfile:
+                    for _, f_path in file_list:
+                        with open(f_path, "rb") as infile:
+                            shutil.copyfileobj(infile, outfile)
+                
+                # Usuń oryginalne pliki po zmergowaniu
+                # print(f"  -> Usuwanie {len(file_list)} oryginalnych plików.")
+                # for _, f_path in file_list:
+                #     f_path.unlink()
     else:
         print("Informacja: Katalog 'dodatkowe_pliki' nie istnieje w repozytorium.")
 
