@@ -1,5 +1,5 @@
 # Pliki konfiguracyjne z danymi wrażliwymi
-.mb_config
+.dm_config
 
 # Katalog z lokalnym klonem repozytorium
 local_repo/
