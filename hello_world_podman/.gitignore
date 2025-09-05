@@ -1,0 +1,76 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.egg
+instal-logs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+.env
+.env.*
+
+# Pytest / test cache
+.pytest_cache/
+.cache/
+
+# Type checkers
+.mypy_cache/
+.pyre/
+.pytype/
+
+# Logs
+logs/
+*.log
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Sphinx
+docs/_build/
+
+# Editor and OS files
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# Packaging metadata often generated during builds
+hello_world.egg-info/
+*.egg-info/
+
+# Podman / container build artifacts
+*.tar
+*.tar.gz
+*.img
+podman-*
+buildah-*
+
+# Misc
+.pytest_cache/
+__pycache__/
+# Log files
+logs/
+*.log

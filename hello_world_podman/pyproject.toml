@@ -1,0 +1,15 @@
+[project]
+name = "hello_world"
+version = "0.0.1"
+authors = [
+  { name="Rafał", email="rafal@example.com" },
+]
+description = "A small example package"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "loguru",
+]
+
+[project.scripts]
+hello = "hello_world.src.cli:main"

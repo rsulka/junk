@@ -1,0 +1,33 @@
+# Użyj oficjalnego, lekkiego obrazu Python jako bazę
+FROM python:3.12-slim
+
+# Zdefiniuj argumenty budowania z domyślnymi wartościami
+ARG UID=1000
+ARG GID=1000
+
+# Ustaw katalog roboczy
+WORKDIR /app
+
+# Stwórz grupę i użytkownika z UID/GID przekazanymi podczas budowania
+# Następnie zmień właściciela katalogu /app
+RUN groupadd -g $GID appuser && \
+    useradd --create-home -u $UID -g $GID appuser && \
+    chown -R appuser:appuser /app
+
+# Skopiuj pliki projektu
+COPY pyproject.toml .
+COPY config.json .
+COPY README.md .
+COPY hello_world/ ./hello_world/
+
+# Przełącz na nowego użytkownika na stałe
+USER appuser
+
+# Dodaj lokalny katalog bin użytkownika do PATH.
+ENV PATH="/home/appuser/.local/bin:${PATH}"
+
+# Zainstaluj aplikację w przestrzeni użytkownika (--user).
+RUN pip install --user .
+
+# Uruchom aplikację
+CMD ["hello"]
