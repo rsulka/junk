@@ -103,7 +103,7 @@ install_all() {
   cd "${BUILD_DIR}"
 
   cat > Dockerfile.hub << 'EOF'
-FROM quay.io/jupyterhub/jupyterhub:4.0.2
+FROM quay.io/jupyterhub/jupyterhub:latest
 
 # JupyterHub + DockerSpawner + idle-culler + Paramiko (SSH)
 RUN pip install --no-cache-dir \
@@ -119,7 +119,7 @@ EOF
   echo "== KROK 5: Dockerfile.user (obraz użytkownika) =="
 
   cat > Dockerfile.user << 'EOF'
-FROM quay.io/jupyter/base-notebook:2023-10-20
+FROM quay.io/jupyter/base-notebook:latest
 
 USER root
 RUN apt-get update && apt-get install -y \
@@ -127,6 +127,11 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
+
+# Instalujemy pakiety globalnie jako root, żeby nie były przykryte przez wolumen
+RUN pip install --no-cache-dir \
+    pandas \
+    fabric
 
 # Wracamy do domyślnego użytkownika jovyan
 USER ${NB_UID}
@@ -136,10 +141,6 @@ ENV DOCKER_NOTEBOOK_DIR=/home/jovyan \
     PIP_USER=true
 
 WORKDIR /home/jovyan
-
-RUN pip install --no-cache-dir \
-    pandas \
-    fabric
 EOF
 
   echo "Zbuduję obraz użytkownika: ${USER_IMAGE}"
