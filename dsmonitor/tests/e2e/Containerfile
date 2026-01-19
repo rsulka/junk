@@ -1,0 +1,25 @@
+FROM fedora:41
+
+RUN dnf install -y openssh-server openssh-clients coreutils findutils && \
+    dnf clean all
+
+RUN ssh-keygen -A
+
+RUN useradd -m -s /bin/bash testuser && \
+    mkdir -p /home/testuser/.ssh && \
+    chmod 700 /home/testuser/.ssh && \
+    chown -R testuser:testuser /home/testuser/.ssh
+
+RUN echo 'PermitRootLogin no' >> /etc/ssh/sshd_config && \
+    echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config && \
+    echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config
+
+COPY --chmod=600 id_rsa.pub /home/testuser/.ssh/authorized_keys
+RUN chown testuser:testuser /home/testuser/.ssh/authorized_keys
+
+COPY --chmod=755 generate_test_data.sh /usr/local/bin/
+RUN /usr/local/bin/generate_test_data.sh
+
+EXPOSE 22
+
+CMD ["/usr/sbin/sshd", "-D", "-e"]

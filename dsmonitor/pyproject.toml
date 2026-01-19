@@ -1,0 +1,39 @@
+[project]
+name = "dsmonitor"
+version = "0.1.0"
+description = "Narzędzie do monitorowania zajętości dysku na serwerach RHEL i AIX"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "Rafal" }]
+dependencies = ["pyyaml>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=4.0", "ruff>=0.4", "mypy>=1.10", "types-PyYAML"]
+
+[project.scripts]
+dsmonitor = "dsmonitor.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "ARG", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

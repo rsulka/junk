@@ -1,0 +1,52 @@
+# Przykładowa konfiguracja dsmonitor
+# Skopiuj do config.yaml i dostosuj do swoich potrzeb
+
+# Ustawienia domyślne dla wszystkich hostów
+defaults:
+  top_n: 20
+  file_heavy_threshold: 0.8
+  scan_depth: 20
+  stale_days: 365
+  stale_kind: mtime
+  excludes:
+    - "*/.snapshot/*"
+    - "*/lost+found/*"
+    - "*/.Trash*"
+    - "*/node_modules/*"
+    - "*/__pycache__/*"
+
+# Konfiguracja SSH
+ssh:
+  user: monitor
+  port: 22
+  options: "-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new"
+
+# Równoległość i timeouty
+parallel: 10
+timeout: 1800
+
+# Lista hostów do skanowania
+hosts:
+  # Host z domyślnymi ustawieniami
+  - name: server1.example.com
+    paths:
+      - /data
+      - /home
+
+  # Host z własnymi ustawieniami
+  - name: server2.example.com
+    paths:
+      - /app
+      - /var/log
+    scan_depth: 10
+    excludes:
+      - "*/cache/*"
+      - "*/tmp/*"
+
+  # Host z innym użytkownikiem SSH
+  - name: aix-server.example.com
+    paths:
+      - /opt/app
+      - /export/home
+    ssh_user: admin
+    ssh_port: 2222

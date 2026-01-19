@@ -1,0 +1,32 @@
+# Konfiguracja testowa dla kontenerów E2E
+
+defaults:
+  top_n: 10
+  file_heavy_threshold: 0.8
+  scan_depth: 10
+  stale_days: 90
+  stale_kind: mtime
+  excludes:
+    - "*/.ssh/*"
+
+ssh:
+  user: testuser
+  options: "-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -i /home/rafal/projekty/junk/dsmonitor/tests/e2e/id_rsa"
+
+parallel: 2
+timeout: 60
+
+hosts:
+  - name: test-server1
+    ssh_host: localhost
+    paths:
+      - /data
+      - /home/testuser
+    ssh_port: 2221
+
+  - name: test-server2
+    ssh_host: localhost
+    paths:
+      - /data
+      - /home/testuser
+    ssh_port: 2222
