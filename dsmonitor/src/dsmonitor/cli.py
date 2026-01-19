@@ -176,13 +176,43 @@ def _scan_path(
         elif stale_batch_result.success:
             all_stale = parse_stale_batch_output(stale_batch_result.stdout)
 
+            if config.verbose:
+                print(f"[{host_name}] Stale batch: {len(all_stale)} katalogów z plikami stale")
+                if all_stale:
+                    sample_paths = list(all_stale.keys())[:5]
+                    for sp in sample_paths:
+                        print(f"  Przykład: {sp} -> {all_stale[sp]} B")
+
             top_paths = {d.path for d in root_summary.top_directories}
+
+            if config.verbose:
+                print(f"[{host_name}] Top paths do dopasowania: {len(top_paths)}")
+                for tp in list(top_paths)[:3]:
+                    print(f"  Top: {tp}")
+
             stale_results: dict[str, int] = dict.fromkeys(top_paths, 0)
+            matched_count = 0
+            unmatched_size = 0
             for stale_path, stale_size in all_stale.items():
+                matched = False
                 for dir_path in top_paths:
                     if is_child_of(stale_path, dir_path):
                         stale_results[dir_path] += stale_size
+                        matched_count += 1
+                        matched = True
                         break
+                if not matched:
+                    unmatched_size += stale_size
+
+            if config.verbose:
+                print(f"[{host_name}] Dopasowano {matched_count}/{len(all_stale)} ścieżek stale")
+                if unmatched_size > 0:
+                    from dsmonitor.utils import human_size
+
+                    print(f"[{host_name}] Niedopasowane stale: {human_size(unmatched_size)} (poza Top N)")
+                for dp, ds in stale_results.items():
+                    if ds > 0:
+                        print(f"  Stale dla {dp}: {ds} B")
 
             root_stale = sum(all_stale.values())
             enrich_with_stale(root_summary, stale_results, root_stale)

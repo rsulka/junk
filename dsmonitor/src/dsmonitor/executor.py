@@ -94,9 +94,7 @@ def build_find_stale_command(path: str, days: int, kind: str = "mtime", find_com
     """
     time_flag = f"-{kind}"
 
-    cmd = (
-        f"{shlex.quote(find_command)} {shlex.quote(path)} -xdev -type f {time_flag} +{days} -printf '%s\\n' | awk '{{s+=$1}}END{{print s+0}}'"
-    )
+    cmd = f"{shlex.quote(find_command)} {shlex.quote(path)} -xdev -type f {time_flag} +{days} -printf '%s\\n' | awk '{{s+=$1}}END{{print s+0}}'"
 
     return cmd
 
@@ -326,7 +324,7 @@ def build_find_stale_batch_command(root_path: str, days: int, kind: str = "mtime
 
     cmd = (
         f"{shlex.quote(find_command)} {quoted_root} -xdev -type f {time_flag} +{days} -printf '%h\\t%s\\n' | "
-        "awk 'BEGIN{} {sums[$1]+=$2} END{for(d in sums) print d\"\\t\"sums[d]}'"
+        "awk -F'\\t' '{sums[$1]+=$2} END{for(d in sums) print d\"\\t\"sums[d]}'"
     )
 
     return cmd
