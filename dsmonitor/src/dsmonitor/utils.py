@@ -29,49 +29,6 @@ def human_size(size_bytes: int) -> str:
     return f"{size:.1f} {units[-1]}"
 
 
-def parse_size_to_bytes(size_str: str) -> int:
-    """
-    Parsuje rozmiar z jednostką do bajtów.
-
-    Args:
-        size_str: Rozmiar z jednostką (np. "1.5GB", "100 MB").
-
-    Returns:
-        Rozmiar w bajtach.
-
-    Raises:
-        ValueError: Gdy format jest nieprawidłowy.
-    """
-    size_str = size_str.strip().upper().replace(" ", "")
-
-    units = {
-        "B": 1,
-        "KB": 1024,
-        "K": 1024,
-        "MB": 1024**2,
-        "M": 1024**2,
-        "GB": 1024**3,
-        "G": 1024**3,
-        "TB": 1024**4,
-        "T": 1024**4,
-        "PB": 1024**5,
-        "P": 1024**5,
-    }
-
-    for unit, multiplier in sorted(units.items(), key=lambda x: -len(x[0])):
-        if size_str.endswith(unit):
-            number_part = size_str[: -len(unit)]
-            try:
-                return int(float(number_part) * multiplier)
-            except ValueError as e:
-                raise ValueError(f"Nieprawidłowy format rozmiaru: {size_str}") from e
-
-    try:
-        return int(size_str)
-    except ValueError as e:
-        raise ValueError(f"Nieprawidłowy format rozmiaru: {size_str}") from e
-
-
 def get_parent_path(path: str) -> str:
     """
     Zwraca ścieżkę do katalogu nadrzędnego.
@@ -129,3 +86,22 @@ def is_child_of(child_path: str, parent_path: str) -> bool:
         return True
 
     return child.startswith(parent + "/")
+
+
+def count_access_denied_errors(stderr: str) -> int:
+    """
+    Zlicza błędy braku dostępu ze stderr.
+
+    Args:
+        stderr: Wyjście błędów komendy.
+
+    Returns:
+        Liczba błędów typu "Permission denied".
+    """
+    if not stderr:
+        return 0
+    return sum(
+        1
+        for line in stderr.strip().split("\n")
+        if "Permission denied" in line or "Brak dostępu" in line or "cannot read" in line.lower()
+    )

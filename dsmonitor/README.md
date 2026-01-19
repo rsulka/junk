@@ -52,6 +52,16 @@ dsmonitor --host server1 --paths /data --ssh-user admin
 dsmonitor --config config.yaml --dry-run --verbose
 ```
 
+### Tryby raportu
+
+```bash
+# Tryb size (domyślny) - Top N największych katalogów file-heavy
+dsmonitor --local --paths /data --report-mode size
+
+# Tryb stale - Top N katalogów z największą ilością starych plików
+dsmonitor --local --paths /data --report-mode stale
+```
+
 ### Formaty wyjścia
 
 ```bash
@@ -109,6 +119,7 @@ hosts:
 | `--local, -l` | Tryb lokalny (bez SSH) | false |
 | `--host` | Host do skanowania | - |
 | `--paths, -p` | Ścieżki do skanowania | - |
+| `--report-mode, -m` | Tryb raportu (size/stale) | size |
 | `--top-n, -n` | Liczba wyników Top N | 20 |
 | `--file-heavy-threshold, -t` | Próg ratio | 0.8 |
 | `--scan-depth, -d` | Głębokość skanowania | 20 |
@@ -126,11 +137,11 @@ hosts:
 
 ```text
 ======================================================================
-DISK SPACE MONITOR - RAPORT
+DISK SPACE MONITOR - NAJWIĘKSZE KATALOGI
 ======================================================================
 Data: 2026-01-18 13:45:00
 Wersja: 0.1.0
-Top N: 20 | Próg file-heavy: 0.8
+Tryb: size | Top N: 20
 Stare: 365 dni (mtime)
 
 ======================================================================

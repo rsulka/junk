@@ -2,11 +2,9 @@
 
 from dsmonitor.analyzer import (
     calculate_direct_files_size,
-    calculate_file_heavy_ratio,
     find_top_n_file_heavy,
     get_path_depth,
     parse_du_output,
-    parse_stale_output,
 )
 
 
@@ -78,34 +76,6 @@ class TestCalculateDirectFilesSize:
         assert direct == 500
 
 
-class TestCalculateFileHeavyRatio:
-    """Testy wyliczania file_heavy_ratio."""
-
-    def test_ratio_all_files(self) -> None:
-        """Test ratio dla katalogu z samymi plikami."""
-        sizes = {"/data": 1000}
-
-        ratio = calculate_file_heavy_ratio("/data", sizes)
-        assert ratio == 1.0
-
-    def test_ratio_mixed(self) -> None:
-        """Test ratio dla katalogu mieszanego."""
-        sizes = {
-            "/data": 1000,
-            "/data/sub": 200,
-        }
-
-        ratio = calculate_file_heavy_ratio("/data", sizes)
-        assert ratio == 0.8
-
-    def test_ratio_empty_directory(self) -> None:
-        """Test ratio dla pustego katalogu."""
-        sizes = {"/data": 0}
-
-        ratio = calculate_file_heavy_ratio("/data", sizes)
-        assert ratio == 0.0
-
-
 class TestGetPathDepth:
     """Testy obliczania głębokości ścieżki."""
 
@@ -167,20 +137,48 @@ class TestFindTopNFileHeavy:
         assert all(d.file_heavy_ratio >= 0.5 for d in top)
 
 
-class TestParseStaleOutput:
-    """Testy parsowania wyjścia stale."""
+class TestFindTopNByStale:
+    """Testy znajdowania Top N katalogów po stale_size."""
 
-    def test_parse_valid_output(self) -> None:
-        """Test parsowania poprawnego wyjścia."""
-        assert parse_stale_output("12345") == 12345
-        assert parse_stale_output("12345\n") == 12345
+    def test_find_top_n_by_stale(self) -> None:
+        """Test znajdowania Top N po stale_size."""
+        from dsmonitor.analyzer import find_top_n_by_stale
 
-    def test_parse_zero(self) -> None:
-        """Test parsowania zera."""
-        assert parse_stale_output("0") == 0
-        assert parse_stale_output("0\n") == 0
+        stale_data = {
+            "/data/dir1": 5000,
+            "/data/dir2": 1000,
+            "/data/dir3": 3000,
+        }
+        sizes = {
+            "/data": 10000,
+            "/data/dir1": 6000,
+            "/data/dir2": 3000,
+            "/data/dir3": 4000,
+        }
 
-    def test_parse_invalid_output(self) -> None:
-        """Test parsowania nieprawidłowego wyjścia."""
-        assert parse_stale_output("") == 0
-        assert parse_stale_output("invalid") == 0
+        top = find_top_n_by_stale(stale_data, sizes, "/data", n=2)
+
+        assert len(top) == 2
+        assert top[0].path == "/data/dir1"
+        assert top[0].stale_size == 5000
+        assert top[1].path == "/data/dir3"
+        assert top[1].stale_size == 3000
+
+    def test_find_top_n_by_stale_with_zero(self) -> None:
+        """Test pomijania katalogów z zerowym stale."""
+        from dsmonitor.analyzer import find_top_n_by_stale
+
+        stale_data = {
+            "/data/dir1": 1000,
+            "/data/dir2": 0,
+        }
+        sizes = {
+            "/data": 5000,
+            "/data/dir1": 2000,
+            "/data/dir2": 3000,
+        }
+
+        top = find_top_n_by_stale(stale_data, sizes, "/data", n=10)
+
+        assert len(top) == 1
+        assert top[0].path == "/data/dir1"

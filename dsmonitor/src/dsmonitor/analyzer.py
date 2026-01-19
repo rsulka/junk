@@ -2,13 +2,8 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from dsmonitor.utils import get_parent_path, normalize_path
-
-if TYPE_CHECKING:
-    from dsmonitor.config import Config
-    from dsmonitor.executor import CommandResult
+from dsmonitor.utils import get_parent_path, is_child_of, normalize_path
 
 
 @dataclass
@@ -119,26 +114,6 @@ def calculate_direct_files_size(path: str, sizes: dict[str, int], children_sums:
     return direct_files_size
 
 
-def calculate_file_heavy_ratio(path: str, sizes: dict[str, int], children_sums: dict[str, int] | None = None) -> float:
-    """
-    Wylicza file_heavy_ratio dla katalogu.
-
-    Args:
-        path: Ścieżka do katalogu.
-        sizes: Słownik wszystkich rozmiarów.
-        children_sums: Opcjonalna mapa sum dzieci (jeśli None, zostanie wyliczona).
-
-    Returns:
-        Ratio (0.0 - 1.0) lub 0.0 dla pustych katalogów.
-    """
-    total_size = sizes.get(path, 0)
-    if total_size == 0:
-        return 0.0
-
-    direct_files_size = calculate_direct_files_size(path, sizes, children_sums)
-    return direct_files_size / total_size
-
-
 def get_path_depth(path: str, root: str) -> int:
     """
     Oblicza głębokość ścieżki względem roota.
@@ -191,7 +166,7 @@ def find_top_n_file_heavy(
         if total_size == 0:
             continue
 
-        if not path.startswith(root):
+        if not is_child_of(path, root):
             continue
 
         direct_files_size = max(0, total_size - children_sums.get(path, 0))
@@ -218,81 +193,58 @@ def find_top_n_file_heavy(
     return candidates[:n]
 
 
-def parse_stale_output(output: str) -> int:
-    """
-    Parsuje wyjście komendy find do stale_size.
-
-    Args:
-        output: Wyjście komendy (suma rozmiarów).
-
-    Returns:
-        Rozmiar stale w bajtach.
-    """
-    try:
-        return int(output.strip())
-    except ValueError:
-        return 0
-
-
-def analyze_root(
-    du_result: "CommandResult",
+def find_top_n_by_stale(
+    stale_data: dict[str, int],
+    sizes: dict[str, int],
     root: str,
-    config: "Config",
-) -> RootSummary:
+    n: int,
+) -> list[DirectoryInfo]:
     """
-    Analizuje wynik du dla jednego roota.
+    Znajduje Top N katalogów z największą ilością stale plików.
 
     Args:
-        du_result: Wynik komendy du.
+        stale_data: Słownik ścieżka -> rozmiar stale (z find output).
+        sizes: Słownik wszystkich rozmiarów (z du output).
         root: Ścieżka do katalogu głównego.
-        config: Konfiguracja.
+        n: Liczba wyników.
 
     Returns:
-        Podsumowanie dla roota.
+        Lista Top N katalogów posortowanych po stale_size.
     """
     root = normalize_path(root)
-    warnings: list[str] = []
+    children_sums = _compute_children_sums(sizes)
+    candidates: list[DirectoryInfo] = []
 
-    if du_result.dry_run:
-        return RootSummary(
-            path=root,
-            total_size=0,
-            warnings=["Tryb dry-run - brak danych"],
+    for path, stale_size in stale_data.items():
+        if stale_size == 0:
+            continue
+
+        if not is_child_of(path, root):
+            continue
+
+        total_size = sizes.get(path, 0)
+        direct_files_size = max(0, total_size - children_sums.get(path, 0)) if total_size > 0 else 0
+        ratio = direct_files_size / total_size if total_size > 0 else 0.0
+
+        parent_path = get_parent_path(path)
+        parent_total_size = sizes.get(parent_path)
+
+        candidates.append(
+            DirectoryInfo(
+                path=path,
+                total_size=total_size,
+                direct_files_size=direct_files_size,
+                file_heavy_ratio=ratio,
+                stale_size=stale_size,
+                parent_path=parent_path,
+                parent_total_size=parent_total_size,
+                depth=get_path_depth(path, root),
+            )
         )
 
-    has_output = bool(du_result.stdout.strip())
-    if not du_result.success and not has_output:
-        return RootSummary(
-            path=root,
-            total_size=0,
-            warnings=[f"Błąd du: {du_result.stderr}"],
-        )
+    candidates.sort(key=lambda d: d.stale_size or 0, reverse=True)
 
-    sizes = parse_du_output(du_result.stdout)
-
-    if du_result.stderr:
-        access_denied_count = 0
-        for line in du_result.stderr.strip().split("\n"):
-            if "Permission denied" in line or "Brak dostępu" in line or "cannot read" in line.lower():
-                access_denied_count += 1
-        if access_denied_count > 0:
-            warnings.append(f"Pominięto {access_denied_count} katalogów z powodu braku dostępu")
-
-    root_total = sizes.get(root, 0)
-
-    top_dirs = find_top_n_file_heavy(
-        sizes,
-        root,
-        config.top_n,
-        config.file_heavy_threshold,
-    )
-
-    return RootSummary(
-        path=root,
-        total_size=root_total,
-        top_directories=top_dirs,
-        warnings=warnings[:10],
-    )
+    return candidates[:n]
 
 
 def enrich_with_stale(

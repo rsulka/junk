@@ -59,46 +59,6 @@ def build_du_command_args(
     return cmd_args
 
 
-def build_du_command(
-    path: str, depth: int, excludes: list[str], one_filesystem: bool = True, du_command: str = "du"
-) -> str:
-    """
-    Buduje komendę du jako string (dla SSH/shell=True).
-
-    Args:
-        path: Ścieżka do skanowania.
-        depth: Maksymalna głębokość.
-        excludes: Lista wzorców do wykluczenia.
-        one_filesystem: Czy ograniczyć do jednego systemu plików.
-        du_command: Ścieżka do komendy du.
-
-    Returns:
-        Komenda du jako string.
-    """
-    args = build_du_command_args(path, depth, excludes, one_filesystem, du_command)
-    return shlex.join(args)
-
-
-def build_find_stale_command(path: str, days: int, kind: str = "mtime", find_command: str = "find") -> str:
-    """
-    Buduje komendę find do wyliczenia stale_size.
-
-    Args:
-        path: Ścieżka do skanowania.
-        days: Liczba dni (pliki starsze niż).
-        kind: Typ czasu (mtime, atime, ctime).
-        find_command: Ścieżka do komendy find.
-
-    Returns:
-        Komenda find jako string.
-    """
-    time_flag = f"-{kind}"
-
-    cmd = f"{shlex.quote(find_command)} {shlex.quote(path)} -xdev -type f {time_flag} +{days} -printf '%s\\n' | awk '{{s+=$1}}END{{print s+0}}'"
-
-    return cmd
-
-
 def build_ssh_command_args(host: "HostProfile", remote_cmd: str, config: "Config") -> list[str]:
     """
     Buduje komendę SSH jako listę argumentów.
@@ -257,51 +217,6 @@ def run_du(
     du_command = host.get_du_command(config.du_command) if host else config.du_command
     du_cmd = build_du_command_args(path, depth, excludes, du_command=du_command)
     return run_command(du_cmd, host, config)
-
-
-def run_find_stale(
-    path: str,
-    host: "HostProfile | None",
-    config: "Config",
-    days: int | None = None,
-    kind: str | None = None,
-) -> CommandResult:
-    """
-    Uruchamia komendę find do obliczenia stale_size.
-
-    Args:
-        path: Ścieżka do skanowania.
-        host: Profil hosta (None dla trybu lokalnego).
-        config: Konfiguracja globalna.
-        days: Liczba dni (None = użyj config).
-        kind: Typ czasu (None = użyj config).
-
-    Returns:
-        Wynik wykonania komendy find.
-    """
-    if days is None:
-        days = config.stale_days
-
-    if kind is None:
-        kind = config.stale_kind
-
-    find_command = host.get_find_command(config.find_command) if host else config.find_command
-    find_cmd = build_find_stale_command(path, days, kind, find_command)
-    return run_command(find_cmd, host, config)
-
-
-def test_ssh_connection(host: "HostProfile", config: "Config") -> CommandResult:
-    """
-    Testuje połączenie SSH z hostem.
-
-    Args:
-        host: Profil hosta.
-        config: Konfiguracja globalna.
-
-    Returns:
-        Wynik testu połączenia.
-    """
-    return run_command("echo 'SSH OK'", host, config, timeout=30)
 
 
 def build_find_stale_batch_command(root_path: str, days: int, kind: str = "mtime", find_command: str = "find") -> str:

@@ -3,17 +3,21 @@
 import argparse
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from dsmonitor import __version__
-from dsmonitor.analyzer import HostResult, RootSummary, analyze_root, enrich_with_stale
+from dsmonitor.analyzer import (
+    HostResult,
+    RootSummary,
+    enrich_with_stale,
+    find_top_n_by_stale,
+    find_top_n_file_heavy,
+    parse_du_output,
+)
 from dsmonitor.config import Config, HostProfile, build_config, load_yaml_config
 from dsmonitor.executor import parse_stale_batch_output, run_du, run_find_stale_batch
 from dsmonitor.reporter import generate_report, write_report
-from dsmonitor.utils import is_child_of
-
-if TYPE_CHECKING:
-    pass
+from dsmonitor.utils import count_access_denied_errors, human_size, is_child_of, normalize_path
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -48,6 +52,13 @@ Przykłady użycia:
 
     scan_group = parser.add_argument_group("Parametry skanowania")
     scan_group.add_argument("--top-n", "-n", type=int, metavar="N", help="Liczba wyników Top N (domyślnie: 20)")
+    scan_group.add_argument(
+        "--report-mode",
+        "-m",
+        choices=["size", "stale"],
+        default="size",
+        help="Tryb raportu: size (największe), stale (stare pliki)",
+    )
     scan_group.add_argument(
         "--file-heavy-threshold", "-t", type=float, metavar="PRÓG", help="Próg file-heavy ratio (domyślnie: 0.8)"
     )
@@ -132,6 +143,10 @@ def _scan_path(
     """
     Skanuje pojedynczą ścieżkę: du → analyze → stale.
 
+    W zależności od report_mode:
+    - "size": Top N największych katalogów (file-heavy)
+    - "stale": Top N katalogów z największą ilością starych plików
+
     Args:
         path: Ścieżka do skanowania.
         host: Profil hosta (None dla trybu lokalnego).
@@ -163,7 +178,41 @@ def _scan_path(
             f"Błąd du dla {path}: {du_result.stderr}",
         )
 
-    root_summary = analyze_root(du_result, path, config)
+    sizes = parse_du_output(du_result.stdout)
+    root = normalize_path(path)
+    root_total = sizes.get(root, 0)
+    warnings: list[str] = []
+
+    if du_result.stderr:
+        access_denied_count = count_access_denied_errors(du_result.stderr)
+        if access_denied_count > 0:
+            warnings.append(f"Pominięto {access_denied_count} katalogów z powodu braku dostępu")
+
+    if config.report_mode == "stale":
+        return _scan_path_stale_mode(path, host, config, host_name, sizes, root_total, warnings)
+    else:
+        return _scan_path_size_mode(path, host, config, host_name, sizes, root_total, warnings)
+
+
+def _scan_path_size_mode(
+    path: str,
+    host: HostProfile | None,
+    config: Config,
+    host_name: str,
+    sizes: dict[str, int],
+    root_total: int,
+    warnings: list[str],
+) -> tuple[RootSummary, str | None]:
+    """Tryb size: Top N największych katalogów file-heavy, wzbogacone o stale."""
+
+    top_dirs = find_top_n_file_heavy(sizes, path, config.top_n, config.file_heavy_threshold)
+
+    root_summary = RootSummary(
+        path=path,
+        total_size=root_total,
+        top_directories=top_dirs,
+        warnings=warnings[:10],
+    )
 
     if config.stale_days > 0 and root_summary.top_directories:
         if config.verbose:
@@ -171,48 +220,28 @@ def _scan_path(
 
         stale_batch_result = run_find_stale_batch(path, host, config)
 
-        if config.dry_run:
-            print(f"[DRY-RUN] {stale_batch_result.command}")
-        elif stale_batch_result.success:
+        if stale_batch_result.success:
             all_stale = parse_stale_batch_output(stale_batch_result.stdout)
 
             if config.verbose:
                 print(f"[{host_name}] Stale batch: {len(all_stale)} katalogów z plikami stale")
-                if all_stale:
-                    sample_paths = list(all_stale.keys())[:5]
-                    for sp in sample_paths:
-                        print(f"  Przykład: {sp} -> {all_stale[sp]} B")
 
             top_paths = {d.path for d in root_summary.top_directories}
-
-            if config.verbose:
-                print(f"[{host_name}] Top paths do dopasowania: {len(top_paths)}")
-                for tp in list(top_paths)[:3]:
-                    print(f"  Top: {tp}")
-
             stale_results: dict[str, int] = dict.fromkeys(top_paths, 0)
-            matched_count = 0
             unmatched_size = 0
+
             for stale_path, stale_size in all_stale.items():
                 matched = False
                 for dir_path in top_paths:
                     if is_child_of(stale_path, dir_path):
                         stale_results[dir_path] += stale_size
-                        matched_count += 1
                         matched = True
                         break
                 if not matched:
                     unmatched_size += stale_size
 
-            if config.verbose:
-                print(f"[{host_name}] Dopasowano {matched_count}/{len(all_stale)} ścieżek stale")
-                if unmatched_size > 0:
-                    from dsmonitor.utils import human_size
-
-                    print(f"[{host_name}] Niedopasowane stale: {human_size(unmatched_size)} (poza Top N)")
-                for dp, ds in stale_results.items():
-                    if ds > 0:
-                        print(f"  Stale dla {dp}: {ds} B")
+            if config.verbose and unmatched_size > 0:
+                print(f"[{host_name}] Niedopasowane stale: {human_size(unmatched_size)} (poza Top N)")
 
             root_stale = sum(all_stale.values())
             enrich_with_stale(root_summary, stale_results, root_stale)
@@ -220,6 +249,51 @@ def _scan_path(
             root_summary.warnings.append(f"Błąd stale: {stale_batch_result.stderr[:100]}")
 
     return root_summary, None
+
+
+def _scan_path_stale_mode(
+    path: str,
+    host: HostProfile | None,
+    config: Config,
+    host_name: str,
+    sizes: dict[str, int],
+    root_total: int,
+    warnings: list[str],
+) -> tuple[RootSummary, str | None]:
+    """Tryb stale: Top N katalogów z największą ilością starych plików."""
+    if config.verbose:
+        print(f"[{host_name}] Obliczam stale dla {path}...")
+
+    stale_batch_result = run_find_stale_batch(path, host, config)
+
+    if not stale_batch_result.success:
+        return (
+            RootSummary(
+                path=path,
+                total_size=root_total,
+                warnings=[*warnings, f"Błąd stale: {stale_batch_result.stderr[:100]}"],
+            ),
+            None,
+        )
+
+    all_stale = parse_stale_batch_output(stale_batch_result.stdout)
+
+    if config.verbose:
+        print(f"[{host_name}] Stale batch: {len(all_stale)} katalogów z plikami stale")
+
+    top_dirs = find_top_n_by_stale(all_stale, sizes, path, config.top_n)
+    root_stale = sum(all_stale.values())
+
+    return (
+        RootSummary(
+            path=path,
+            total_size=root_total,
+            stale_size=root_stale,
+            top_directories=top_dirs,
+            warnings=warnings[:10],
+        ),
+        None,
+    )
 
 
 def scan_host(host: HostProfile | None, config: Config) -> HostResult:

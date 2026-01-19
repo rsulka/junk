@@ -2,33 +2,14 @@
 
 from dsmonitor.config import Config, HostProfile
 from dsmonitor.executor import (
-    build_du_command,
     build_du_command_args,
-    build_find_stale_command,
     build_ssh_command,
     run_command,
 )
 
 
-class TestBuildDuCommand:
-    """Testy budowania komendy du."""
-
-    def test_basic_command(self) -> None:
-        """Test podstawowej komendy."""
-        cmd = build_du_command("/data", depth=10, excludes=[])
-
-        assert "du" in cmd
-        assert "-B1" in cmd
-        assert "-x" in cmd
-        assert "--max-depth=10" in cmd
-        assert "/data" in cmd
-
-    def test_command_with_excludes(self) -> None:
-        """Test komendy z wykluczeniami."""
-        cmd = build_du_command("/data", depth=10, excludes=["*.log", "*.tmp"])
-
-        assert "--exclude=*.log" in cmd or "'--exclude=*.log'" in cmd
-        assert "--exclude=*.tmp" in cmd or "'--exclude=*.tmp'" in cmd
+class TestBuildDuCommandArgs:
+    """Testy budowania argumentów komendy du."""
 
     def test_command_args_returns_list(self) -> None:
         """Test że build_du_command_args zwraca listę."""
@@ -38,53 +19,28 @@ class TestBuildDuCommand:
         assert "--exclude=*.log" in args
         assert "/data" in args
 
-    def test_command_without_one_filesystem(self) -> None:
-        """Test komendy bez ograniczenia do jednego FS."""
-        cmd = build_du_command("/data", depth=10, excludes=[], one_filesystem=False)
-
-        assert "-x" not in cmd
-
-    def test_custom_du_command_path(self) -> None:
-        """Test komendy z niestandardową ścieżką du (np. AIX)."""
-        cmd = build_du_command("/data", depth=10, excludes=[], du_command="/opt/freeware/bin/du")
-
-        assert "/opt/freeware/bin/du" in cmd
-        assert cmd.startswith("/opt/freeware/bin/du")
-
     def test_custom_du_command_args(self) -> None:
         """Test że build_du_command_args respektuje du_command."""
         args = build_du_command_args("/data", depth=10, excludes=[], du_command="/usr/bin/du")
 
         assert args[0] == "/usr/bin/du"
 
+    def test_one_filesystem_flag(self) -> None:
+        """Test flagi -x dla ograniczenia do jednego FS."""
+        args_with = build_du_command_args("/data", depth=10, excludes=[], one_filesystem=True)
+        args_without = build_du_command_args("/data", depth=10, excludes=[], one_filesystem=False)
 
-class TestBuildFindStaleCommand:
-    """Testy budowania komendy find stale."""
+        assert "-x" in args_with
+        assert "-x" not in args_without
 
-    def test_basic_command(self) -> None:
-        """Test podstawowej komendy."""
-        cmd = build_find_stale_command("/data", days=365, kind="mtime")
+    def test_basic_args(self) -> None:
+        """Test podstawowych argumentów."""
+        args = build_du_command_args("/data", depth=10, excludes=[])
 
-        assert "find" in cmd
-        assert "/data" in cmd
-        assert "-xdev" in cmd
-        assert "-type f" in cmd
-        assert "-mtime +365" in cmd
-        assert "-printf '%s\\n'" in cmd
-        assert "awk" in cmd
-
-    def test_command_with_atime(self) -> None:
-        """Test komendy z atime."""
-        cmd = build_find_stale_command("/data", days=30, kind="atime")
-
-        assert "-atime +30" in cmd
-
-    def test_custom_find_command(self) -> None:
-        """Test komendy z niestandardową ścieżką find."""
-        cmd = build_find_stale_command("/data", days=365, kind="mtime", find_command="/opt/freeware/bin/find")
-
-        assert "/opt/freeware/bin/find" in cmd
-        assert "/data" in cmd
+        assert "du" in args[0]
+        assert "-B1" in args
+        assert "--max-depth=10" in args
+        assert "/data" in args
 
 
 class TestBuildSshCommand:

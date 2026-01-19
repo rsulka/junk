@@ -1,13 +1,11 @@
 """Testy dla modułu utils."""
 
-import pytest
-
 from dsmonitor.utils import (
+    count_access_denied_errors,
     get_parent_path,
     human_size,
     is_child_of,
     normalize_path,
-    parse_size_to_bytes,
 )
 
 
@@ -41,40 +39,6 @@ class TestHumanSize:
     def test_negative(self) -> None:
         """Test ujemnych wartości."""
         assert human_size(-100) == "0 B"
-
-
-class TestParseSizeToBytes:
-    """Testy parsowania rozmiaru z jednostką."""
-
-    def test_bytes(self) -> None:
-        """Test bajtów."""
-        assert parse_size_to_bytes("100B") == 100
-        assert parse_size_to_bytes("100 B") == 100
-
-    def test_kilobytes(self) -> None:
-        """Test kilobajtów."""
-        assert parse_size_to_bytes("1KB") == 1024
-        assert parse_size_to_bytes("1K") == 1024
-        assert parse_size_to_bytes("1.5KB") == 1536
-
-    def test_megabytes(self) -> None:
-        """Test megabajtów."""
-        assert parse_size_to_bytes("1MB") == 1024 * 1024
-        assert parse_size_to_bytes("1M") == 1024 * 1024
-
-    def test_gigabytes(self) -> None:
-        """Test gigabajtów."""
-        assert parse_size_to_bytes("1GB") == 1024**3
-        assert parse_size_to_bytes("1G") == 1024**3
-
-    def test_plain_number(self) -> None:
-        """Test samej liczby."""
-        assert parse_size_to_bytes("1234") == 1234
-
-    def test_invalid_format(self) -> None:
-        """Test nieprawidłowego formatu."""
-        with pytest.raises(ValueError):
-            parse_size_to_bytes("invalid")
 
 
 class TestGetParentPath:
@@ -136,3 +100,29 @@ class TestIsChildOf:
         """Test obsługi trailing slash."""
         assert is_child_of("/data/app/", "/data/app") is True
         assert is_child_of("/data/app", "/data/app/") is True
+
+
+class TestCountAccessDeniedErrors:
+    """Testy zliczania błędów dostępu."""
+
+    def test_no_errors(self) -> None:
+        """Test braku błędów."""
+        assert count_access_denied_errors("") == 0
+        assert count_access_denied_errors("some other error\n") == 0
+
+    def test_permission_denied(self) -> None:
+        """Test błędów Permission denied."""
+        stderr = "du: cannot read directory '/root': Permission denied\n"
+        assert count_access_denied_errors(stderr) == 1
+
+    def test_multiple_errors(self) -> None:
+        """Test wielu błędów."""
+        stderr = """du: cannot read directory '/root': Permission denied
+du: cannot read directory '/etc/private': Permission denied
+du: cannot access '/lost+found': cannot read directory"""
+        assert count_access_denied_errors(stderr) == 3
+
+    def test_polish_error(self) -> None:
+        """Test błędu po polsku."""
+        stderr = "du: Brak dostępu do '/root'\n"
+        assert count_access_denied_errors(stderr) == 1

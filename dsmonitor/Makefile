@@ -1,5 +1,6 @@
 .PHONY: install install-dev test test-cov lint format typecheck clean \
-        e2e-build e2e-start e2e-stop e2e-clean e2e-status e2e-test e2e-ssh
+        e2e-build e2e-start e2e-stop e2e-clean e2e-status e2e-test e2e-ssh \
+        e2e-test-size e2e-test-stale
 
 # ============================================================================
 # Instalacja
@@ -81,9 +82,25 @@ e2e-ssh:
 	@echo "Test SSH do kontenera 2 (port $(E2E_PORT2)):"
 	@ssh -i $(E2E_KEY) -o StrictHostKeyChecking=accept-new -p $(E2E_PORT2) testuser@localhost "echo 'SSH OK'" || true
 
-e2e-test: e2e-start
-	@echo "Uruchamianie dsmonitor na kontenerach E2E..."
-	dsmonitor --config $(E2E_DIR)/config_e2e.yaml
+e2e-test: e2e-start e2e-test-size e2e-test-stale
+	@echo ""
+	@echo "========================================"
+	@echo "Wszystkie testy E2E zakończone pomyślnie"
+	@echo "========================================"
+
+e2e-test-size: e2e-start
+	@echo ""
+	@echo "========================================"
+	@echo "Test E2E: tryb SIZE (największe katalogi)"
+	@echo "========================================"
+	dsmonitor --config $(E2E_DIR)/config_e2e.yaml --report-mode size
+
+e2e-test-stale: e2e-start
+	@echo ""
+	@echo "========================================"
+	@echo "Test E2E: tryb STALE (stare pliki)"
+	@echo "========================================"
+	dsmonitor --config $(E2E_DIR)/config_e2e.yaml --report-mode stale
 
 # ============================================================================
 # Czyszczenie
@@ -116,13 +133,15 @@ help:
 	@echo "    make typecheck    - Sprawdzenie mypy"
 	@echo ""
 	@echo "  Kontenery E2E:"
-	@echo "    make e2e-build    - Budowanie obrazu kontenera"
-	@echo "    make e2e-start    - Uruchomienie kontenerów"
-	@echo "    make e2e-stop     - Zatrzymanie kontenerów"
-	@echo "    make e2e-clean    - Usunięcie kontenerów"
-	@echo "    make e2e-status   - Status kontenerów"
-	@echo "    make e2e-ssh      - Test połączenia SSH"
-	@echo "    make e2e-test     - Uruchomienie dsmonitor na kontenerach"
+	@echo "    make e2e-build      - Budowanie obrazu kontenera"
+	@echo "    make e2e-start      - Uruchomienie kontenerów"
+	@echo "    make e2e-stop       - Zatrzymanie kontenerów"
+	@echo "    make e2e-clean      - Usunięcie kontenerów"
+	@echo "    make e2e-status     - Status kontenerów"
+	@echo "    make e2e-ssh        - Test połączenia SSH"
+	@echo "    make e2e-test       - Uruchomienie obu trybów (size + stale)"
+	@echo "    make e2e-test-size  - Test trybu size (największe katalogi)"
+	@echo "    make e2e-test-stale - Test trybu stale (stare pliki)"
 	@echo ""
 	@echo "  Czyszczenie:"
 	@echo "    make clean        - Czyszczenie artefaktów build"

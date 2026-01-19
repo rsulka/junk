@@ -53,6 +53,7 @@ class Config:
     hosts: list[HostProfile] = field(default_factory=list)
     paths: list[str] = field(default_factory=list)
     top_n: int = 20
+    report_mode: str = "size"
     file_heavy_threshold: float = 0.8
     scan_depth: int = 20
     stale_days: int = 365
@@ -105,6 +106,9 @@ class Config:
 
         if self.stale_kind not in ("mtime", "atime", "ctime"):
             errors.append("--stale-kind musi być: mtime, atime lub ctime.")
+
+        if self.report_mode not in ("size", "stale"):
+            errors.append("--report-mode musi być: size lub stale.")
 
         if self.output_format not in ("text", "json", "csv"):
             errors.append("--format musi być: text, json lub csv.")
@@ -214,6 +218,7 @@ def build_config(yaml_config: dict[str, Any] | None, cli_args: dict[str, Any]) -
         hosts=hosts,
         paths=paths,
         top_n=get_value("top_n", 20),
+        report_mode=get_value("report_mode", "size"),
         file_heavy_threshold=get_value("file_heavy_threshold", 0.8),
         scan_depth=get_value("scan_depth", 20),
         stale_days=get_value("stale_days", 365),

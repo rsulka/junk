@@ -59,13 +59,14 @@ def get_metadata(config: "Config") -> dict[str, Any]:
 
 def _format_report_header(config: "Config") -> list[str]:
     """Buduje nagłówek raportu tekstowego."""
+    mode_label = "NAJWIĘKSZE KATALOGI" if config.report_mode == "size" else "KATALOGI ZE STARYMI PLIKAMI"
     return [
         "=" * 70,
-        "DISK SPACE MONITOR - RAPORT",
+        f"DISK SPACE MONITOR - {mode_label}",
         "=" * 70,
         f"Data: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f"Wersja: {__version__}",
-        f"Top N: {config.top_n} | Próg file-heavy: {config.file_heavy_threshold}",
+        f"Tryb: {config.report_mode} | Top N: {config.top_n}",
         f"Stare: {config.stale_days} dni ({config.stale_kind})",
         "",
     ]
@@ -109,16 +110,18 @@ def format_text_report(results: list["HostResult"], config: "Config") -> str:
 
         for root in host_result.roots:
             lines.append("")
-            lines.append(_format_root_summary(root, config.stale_days))
+            lines.append(_format_root_summary(root, config))
 
     lines.extend(_format_report_footer())
 
     return "\n".join(lines)
 
 
-def _format_root_summary(root: "RootSummary", stale_days: int) -> str:
+def _format_root_summary(root: "RootSummary", config: "Config") -> str:
     """Formatuje podsumowanie dla roota."""
     lines: list[str] = []
+    is_stale_mode = config.report_mode == "stale"
+    stale_days = config.stale_days
 
     stale_info = ""
     if root.stale_size is not None:
@@ -137,18 +140,18 @@ def _format_root_summary(root: "RootSummary", stale_days: int) -> str:
         lines.append("")
 
     if not root.top_directories:
-        lines.append("  Brak katalogów spełniających kryteria file-heavy.")
+        lines.append("  Brak katalogów spełniających kryteria.")
     else:
         for i, dir_info in enumerate(root.top_directories, 1):
-            stale_str = ""
-            if dir_info.stale_size is not None:
-                stale_str = f" (Stare > {stale_days} dni: {human_size(dir_info.stale_size)})"
-
-            ratio_pct = f"{dir_info.file_heavy_ratio * 100:.0f}%"
-
             lines.append(f"  {i:3}. {dir_info.path}")
-            lines.append(f"       Rozmiar: {human_size(dir_info.total_size)}{stale_str}")
-            lines.append(f"       Pliki bezpośrednio: {human_size(dir_info.direct_files_size)} ({ratio_pct})")
+
+            if is_stale_mode:
+                lines.append(f"       Stare: {human_size(dir_info.stale_size or 0)}")
+                lines.append(f"       Rozmiar całkowity: {human_size(dir_info.total_size)}")
+            else:
+                ratio_pct = f"{dir_info.file_heavy_ratio * 100:.0f}%"
+                lines.append(f"       Rozmiar: {human_size(dir_info.total_size)}")
+                lines.append(f"       Pliki bezpośrednio: {human_size(dir_info.direct_files_size)} ({ratio_pct})")
 
             if dir_info.parent_path and dir_info.parent_total_size is not None:
                 lines.append(f"       Rodzic: {dir_info.parent_path} — {human_size(dir_info.parent_total_size)}")
