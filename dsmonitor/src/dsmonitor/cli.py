@@ -151,7 +151,9 @@ def _scan_path(
             None,
         )
 
-    if not du_result.success:
+    has_output = bool(du_result.stdout.strip())
+
+    if not du_result.success and not has_output:
         return (
             RootSummary(
                 path=path,

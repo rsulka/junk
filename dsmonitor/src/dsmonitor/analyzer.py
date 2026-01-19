@@ -260,7 +260,8 @@ def analyze_root(
             warnings=["Tryb dry-run - brak danych"],
         )
 
-    if not du_result.success:
+    has_output = bool(du_result.stdout.strip())
+    if not du_result.success and not has_output:
         return RootSummary(
             path=root,
             total_size=0,
@@ -270,9 +271,12 @@ def analyze_root(
     sizes = parse_du_output(du_result.stdout)
 
     if du_result.stderr:
+        access_denied_count = 0
         for line in du_result.stderr.strip().split("\n"):
-            if "Permission denied" in line or "cannot read" in line.lower():
-                warnings.append(line)
+            if "Permission denied" in line or "Brak dostępu" in line or "cannot read" in line.lower():
+                access_denied_count += 1
+        if access_denied_count > 0:
+            warnings.append(f"Pominięto {access_denied_count} katalogów z powodu braku dostępu")
 
     root_total = sizes.get(root, 0)
 
