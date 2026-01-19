@@ -44,6 +44,19 @@ class TestBuildDuCommand:
 
         assert "-x" not in cmd
 
+    def test_custom_du_command_path(self) -> None:
+        """Test komendy z niestandardową ścieżką du (np. AIX)."""
+        cmd = build_du_command("/data", depth=10, excludes=[], du_command="/opt/freeware/bin/du")
+
+        assert "/opt/freeware/bin/du" in cmd
+        assert cmd.startswith("/opt/freeware/bin/du")
+
+    def test_custom_du_command_args(self) -> None:
+        """Test że build_du_command_args respektuje du_command."""
+        args = build_du_command_args("/data", depth=10, excludes=[], du_command="/usr/bin/du")
+
+        assert args[0] == "/usr/bin/du"
+
 
 class TestBuildFindStaleCommand:
     """Testy budowania komendy find stale."""

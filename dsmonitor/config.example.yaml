@@ -8,6 +8,8 @@ defaults:
   scan_depth: 20
   stale_days: 365
   stale_kind: mtime
+  # Ścieżka do komendy du (domyślnie: du)
+  # du_command: "/usr/bin/du"
   excludes:
     - "*/.snapshot/*"
     - "*/lost+found/*"
@@ -50,3 +52,5 @@ hosts:
       - /export/home
     ssh_user: admin
     ssh_port: 2222
+    # AIX wymaga GNU du z /opt/freeware/bin
+    du_command: "/opt/freeware/bin/du"

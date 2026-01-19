@@ -28,7 +28,9 @@ class CommandResult:
         return self.return_code == 0 and not self.timed_out
 
 
-def build_du_command_args(path: str, depth: int, excludes: list[str], one_filesystem: bool = True) -> list[str]:
+def build_du_command_args(
+    path: str, depth: int, excludes: list[str], one_filesystem: bool = True, du_command: str = "du"
+) -> list[str]:
     """
     Buduje komendę du jako listę argumentów (dla shell=False).
 
@@ -37,11 +39,12 @@ def build_du_command_args(path: str, depth: int, excludes: list[str], one_filesy
         depth: Maksymalna głębokość.
         excludes: Lista wzorców do wykluczenia.
         one_filesystem: Czy ograniczyć do jednego systemu plików.
+        du_command: Ścieżka do komendy du (np. /opt/freeware/bin/du dla AIX).
 
     Returns:
         Lista argumentów komendy du.
     """
-    cmd_args = ["du", "-B1"]
+    cmd_args = [du_command, "-B1"]
 
     if one_filesystem:
         cmd_args.append("-x")
@@ -56,7 +59,9 @@ def build_du_command_args(path: str, depth: int, excludes: list[str], one_filesy
     return cmd_args
 
 
-def build_du_command(path: str, depth: int, excludes: list[str], one_filesystem: bool = True) -> str:
+def build_du_command(
+    path: str, depth: int, excludes: list[str], one_filesystem: bool = True, du_command: str = "du"
+) -> str:
     """
     Buduje komendę du jako string (dla SSH/shell=True).
 
@@ -65,11 +70,12 @@ def build_du_command(path: str, depth: int, excludes: list[str], one_filesystem:
         depth: Maksymalna głębokość.
         excludes: Lista wzorców do wykluczenia.
         one_filesystem: Czy ograniczyć do jednego systemu plików.
+        du_command: Ścieżka do komendy du.
 
     Returns:
         Komenda du jako string.
     """
-    args = build_du_command_args(path, depth, excludes, one_filesystem)
+    args = build_du_command_args(path, depth, excludes, one_filesystem, du_command)
     return shlex.join(args)
 
 
@@ -249,7 +255,8 @@ def run_du(
             all_excludes.extend(host.excludes)
         excludes = all_excludes
 
-    du_cmd = build_du_command_args(path, depth, excludes)
+    du_command = host.get_du_command(config.du_command) if host else config.du_command
+    du_cmd = build_du_command_args(path, depth, excludes, du_command=du_command)
     return run_command(du_cmd, host, config)
 
 

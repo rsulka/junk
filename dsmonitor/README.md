@@ -93,6 +93,12 @@ hosts:
       - /app
     scan_depth: 10
     ssh_user: admin
+
+  # AIX wymaga GNU du z innej lokalizacji
+  - name: aix-server.example.com
+    paths:
+      - /opt/app
+    du_command: "/opt/freeware/bin/du"
 ```
 
 ## Parametry CLI
