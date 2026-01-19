@@ -10,6 +10,8 @@ defaults:
   stale_kind: mtime
   # Ścieżka do komendy du (domyślnie: du)
   # du_command: "/usr/bin/du"
+  # Ścieżka do komendy find (domyślnie: find)
+  # find_command: "/usr/bin/find"
   excludes:
     - "*/.snapshot/*"
     - "*/lost+found/*"
@@ -54,3 +56,5 @@ hosts:
     ssh_port: 2222
     # AIX wymaga GNU du z /opt/freeware/bin
     du_command: "/opt/freeware/bin/du"
+    # AIX wymaga GNU find z /opt/freeware/bin
+    find_command: "/opt/freeware/bin/find"

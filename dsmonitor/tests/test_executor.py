@@ -79,6 +79,13 @@ class TestBuildFindStaleCommand:
 
         assert "-atime +30" in cmd
 
+    def test_custom_find_command(self) -> None:
+        """Test komendy z niestandardową ścieżką find."""
+        cmd = build_find_stale_command("/data", days=365, kind="mtime", find_command="/opt/freeware/bin/find")
+
+        assert "/opt/freeware/bin/find" in cmd
+        assert "/data" in cmd
+
 
 class TestBuildSshCommand:
     """Testy budowania komendy SSH."""

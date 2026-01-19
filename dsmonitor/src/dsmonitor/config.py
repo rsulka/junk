@@ -19,6 +19,7 @@ class HostProfile:
     ssh_port: int | None = None
     ssh_host: str | None = None
     du_command: str | None = None
+    find_command: str | None = None
 
     def get_scan_depth(self, default: int) -> int:
         """Zwraca głębokość skanowania dla hosta lub wartość domyślną."""
@@ -39,6 +40,10 @@ class HostProfile:
     def get_du_command(self, default: str) -> str:
         """Zwraca ścieżkę do komendy du dla hosta lub wartość domyślną."""
         return self.du_command if self.du_command is not None else default
+
+    def get_find_command(self, default: str) -> str:
+        """Zwraca ścieżkę do komendy find dla hosta lub wartość domyślną."""
+        return self.find_command if self.find_command is not None else default
 
 
 @dataclass
@@ -63,6 +68,7 @@ class Config:
     ssh_user: str | None = None
     ssh_port: int = 22
     du_command: str = "du"
+    find_command: str = "find"
     ssh_options: str = "-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new"
 
     def validate(self) -> list[str]:
@@ -172,6 +178,7 @@ def build_config(yaml_config: dict[str, Any] | None, cli_args: dict[str, Any]) -
             ssh_port=host_data.get("ssh_port"),
             ssh_host=host_data.get("ssh_host"),
             du_command=host_data.get("du_command"),
+            find_command=host_data.get("find_command"),
         )
         hosts.append(host)
 
@@ -223,4 +230,5 @@ def build_config(yaml_config: dict[str, Any] | None, cli_args: dict[str, Any]) -
         ssh_port=cli_args.get("ssh_port") or ssh_config.get("port", 22),
         ssh_options=cli_args.get("ssh_options") or ssh_config.get("options", Config.ssh_options),
         du_command=get_value("du_command", "du"),
+        find_command=get_value("find_command", "find"),
     )

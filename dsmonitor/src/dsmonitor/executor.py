@@ -79,7 +79,7 @@ def build_du_command(
     return shlex.join(args)
 
 
-def build_find_stale_command(path: str, days: int, kind: str = "mtime") -> str:
+def build_find_stale_command(path: str, days: int, kind: str = "mtime", find_command: str = "find") -> str:
     """
     Buduje komendę find do wyliczenia stale_size.
 
@@ -87,6 +87,7 @@ def build_find_stale_command(path: str, days: int, kind: str = "mtime") -> str:
         path: Ścieżka do skanowania.
         days: Liczba dni (pliki starsze niż).
         kind: Typ czasu (mtime, atime, ctime).
+        find_command: Ścieżka do komendy find.
 
     Returns:
         Komenda find jako string.
@@ -94,7 +95,7 @@ def build_find_stale_command(path: str, days: int, kind: str = "mtime") -> str:
     time_flag = f"-{kind}"
 
     cmd = (
-        f"find {shlex.quote(path)} -xdev -type f {time_flag} +{days} -printf '%s\\n' | awk '{{s+=$1}}END{{print s+0}}'"
+        f"{shlex.quote(find_command)} {shlex.quote(path)} -xdev -type f {time_flag} +{days} -printf '%s\\n' | awk '{{s+=$1}}END{{print s+0}}'"
     )
 
     return cmd
@@ -286,7 +287,8 @@ def run_find_stale(
     if kind is None:
         kind = config.stale_kind
 
-    find_cmd = build_find_stale_command(path, days, kind)
+    find_command = host.get_find_command(config.find_command) if host else config.find_command
+    find_cmd = build_find_stale_command(path, days, kind, find_command)
     return run_command(find_cmd, host, config)
 
 
@@ -304,7 +306,7 @@ def test_ssh_connection(host: "HostProfile", config: "Config") -> CommandResult:
     return run_command("echo 'SSH OK'", host, config, timeout=30)
 
 
-def build_find_stale_batch_command(root_path: str, days: int, kind: str = "mtime") -> str:
+def build_find_stale_batch_command(root_path: str, days: int, kind: str = "mtime", find_command: str = "find") -> str:
     """
     Buduje komendę find do wyliczenia stale_size dla wielu ścieżek naraz.
 
@@ -314,6 +316,7 @@ def build_find_stale_batch_command(root_path: str, days: int, kind: str = "mtime
         root_path: Główna ścieżka (root).
         days: Liczba dni (pliki starsze niż).
         kind: Typ czasu (mtime, atime, ctime).
+        find_command: Ścieżka do komendy find.
 
     Returns:
         Komenda find jako string.
@@ -322,7 +325,7 @@ def build_find_stale_batch_command(root_path: str, days: int, kind: str = "mtime
     quoted_root = shlex.quote(root_path)
 
     cmd = (
-        f"find {quoted_root} -xdev -type f {time_flag} +{days} -printf '%h\\t%s\\n' | "
+        f"{shlex.quote(find_command)} {quoted_root} -xdev -type f {time_flag} +{days} -printf '%h\\t%s\\n' | "
         "awk 'BEGIN{} {sums[$1]+=$2} END{for(d in sums) print d\"\\t\"sums[d]}'"
     )
 
@@ -358,7 +361,8 @@ def run_find_stale_batch(
     if kind is None:
         kind = config.stale_kind
 
-    find_cmd = build_find_stale_batch_command(root_path, days, kind)
+    find_command = host.get_find_command(config.find_command) if host else config.find_command
+    find_cmd = build_find_stale_batch_command(root_path, days, kind, find_command)
     return run_command(find_cmd, host, config)
 
 
